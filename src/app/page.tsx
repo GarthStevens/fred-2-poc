@@ -9,6 +9,7 @@ import { Workbook } from 'exceljs';
 import { useEffect, useState } from 'react';
 import { registerAllModules } from 'handsontable/registry';
 import { CellChange, ChangeSource } from "handsontable/common";
+import numeral from 'numeral';
 
 import 'handsontable/styles/handsontable.min.css';
 import 'handsontable/styles/ht-theme-main.min.css';
@@ -25,6 +26,7 @@ export default function Home() {
   const [total, setTotal] = useState<number>(0);
   const [unitData, setUnitData] = useState<unknown[][]>([]);
   const [commonData, setCommonData] = useState<unknown[][]>([]);
+  const [hasBulked, setHasBulked] = useState<boolean>(false);
 
   function afterUnitChange(changes: CellChange[] | null, source: ChangeSource) {
     if (!hfInstance || source === 'loadData' || !changes) return;
@@ -164,6 +166,40 @@ export default function Home() {
     }
   }
 
+  function handleBulkPopulateClick() {
+    if (!hfInstance) return;
+    console.log('Bulk Populate Clicked');
+
+    hfInstance.removeRows(1, [1, 5])
+    hfInstance.removeRows(2, [1, 5])
+
+    const assetCount = 500
+
+    hfInstance.batch(() => {
+      for (let i = 1; i <= assetCount; i++) {
+        const row = i + 1
+        const rate = Math.floor(Math.random() * 1000) + 1;
+        const quantity = Math.floor(Math.random() * 10) + 1;
+        hfInstance.addRows(1, [i, 1]);
+        hfInstance.setCellContents({ sheet: 1, col: 0, row: i }, [[`Unit Asset ${i}`, rate, quantity, `=B${row}*C${row}`]]);
+      }
+
+      for (let i = 1; i <= assetCount; i++) {
+        const row = i + 1
+        const rate = Math.floor(Math.random() * 1000) + 1;
+        const quantity = Math.floor(Math.random() * 1000) + 1;
+        hfInstance.addRows(2, [i, 1]);
+        hfInstance.setCellContents({ sheet: 2, col: 0, row: i }, [[`Common Asset ${i}`, rate, quantity, `=B${row}*C${row}*Global!$B$1`]]);
+      }
+    })
+
+    setUnitData(hfInstance.getSheetSerialized(1));
+    setCommonData(hfInstance.getSheetSerialized(2));
+
+    hfInstance.setCellContents({ sheet: 0, col: 1, row: 1 }, '=SUM(Unit!D2:D10006) + SUM(Common!D2:D10006)');
+    setHasBulked(true);
+  }
+
   return (
     <div className="flex justify-center w-full">
       <div className="w-full max-w-6xl px-4 py-6">
@@ -177,6 +213,7 @@ export default function Home() {
               <li><strong>Cross sheet dependencies:</strong> Updating the Common Entitlement should also update the totals for the common assets</li>
               <li><strong>Readonly fields:</strong> The Total field should reflect the sum of the unit asset totals plus the sum of the common asset totals</li>
               <li><strong>Formula support:</strong> Allowing the user to use formulas in the excel document</li>
+              <li><strong>Performance:</strong> Allowing the user to use a grid to edit the excel document</li>
             </ul>
 
             <h2 className="text-lg font-bold mt-4">How to use the POC</h2>
@@ -185,6 +222,7 @@ export default function Home() {
               <li>Update the Common Entitlement</li>
               <li>Update the unit assets</li>
               <li>Update the common assets</li>
+              <li>Press the Bulk Populate button (this will populate 500 unit assets and 500 common assets) and then update the unit assets and common assets to check performance</li>
               <li>Download the excel document</li>
             </ol>
 
@@ -209,7 +247,14 @@ export default function Home() {
             hfInstance
               ? (
                 <>
-
+                  {!hasBulked && (
+                    <>
+                      <div className="grid w-full max-w-sm gap-1.5">
+                        <Button onClick={handleBulkPopulateClick}>Bulk Populate</Button>
+                      </div>
+                      <hr className="my-2" />
+                    </>
+                  )}
 
                   <div className="grid w-full max-w-sm gap-1.5">
                     <Label htmlFor="entitlement">Common Entitlement</Label>
@@ -218,33 +263,35 @@ export default function Home() {
 
                   <hr className="my-2" />
 
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label>Unit Assets</Label>
-                    <div className="ht-theme-main-dark-auto">
-                      <HotTable
-                        formulas={{ engine: hfInstance, sheetName: 'Unit' }}
-                        data={unitData}
-                        rowHeaders
-                        height="auto"
-                        licenseKey="non-commercial-and-evaluation"
-                        afterChange={afterUnitChange}
-                      />
+                  <div className="flex gap-4">
+                    <div className="grid w-full items-center gap-1.5">
+                      <Label>Unit Assets</Label>
+                      <div className="ht-theme-main-dark-auto">
+                        <HotTable
+                          height={300}
+                          formulas={{ engine: hfInstance, sheetName: 'Unit' }}
+                          data={unitData}
+                          rowHeaders
+                          licenseKey="non-commercial-and-evaluation"
+                          afterChange={afterUnitChange}
+                          stretchH="all"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <hr className="my-2" />
-
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label>Common Assets</Label>
-                    <div className="ht-theme-main-dark-auto">
-                      <HotTable
-                        formulas={{ engine: hfInstance, sheetName: 'Common' }}
-                        data={commonData}
-                        rowHeaders
-                        height="auto"
-                        licenseKey="non-commercial-and-evaluation"
-                        afterChange={afterCommonChange}
-                      />
+                    <div className="grid w-full items-center gap-1.5">
+                      <Label>Common Assets</Label>
+                      <div className="ht-theme-main-dark-auto">
+                        <HotTable
+                          height={300}
+                          formulas={{ engine: hfInstance, sheetName: 'Common' }}
+                          data={commonData}
+                          rowHeaders
+                          licenseKey="non-commercial-and-evaluation"
+                          afterChange={afterCommonChange}
+                          stretchH="all"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -252,7 +299,7 @@ export default function Home() {
 
                   <div className="grid w-full max-w-sm items-center gap-1.5">
                     <Label htmlFor="total">Total</Label>
-                    <Input id="total" type="number" value={total} readOnly />
+                    <Input id="total" type="text" value={numeral(total).format('$0,0.00')} readOnly />
                   </div>
 
                   <hr className="my-2" />
