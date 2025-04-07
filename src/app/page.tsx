@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { HotTable } from '@handsontable/react-wrapper';
 import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { registerAllModules } from 'handsontable/registry';
 import { CellChange, ChangeSource } from "handsontable/common";
 
@@ -24,16 +24,21 @@ export default function Home() {
   const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
   const [entitlement, setEntitlement] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
-  const [unitData, setUnitData] = useState<any[][]>([]);
-  const [commonData, setCommonData] = useState<any[][]>([]);
+  const [unitData, setUnitData] = useState<unknown[][]>([]);
+  const [commonData, setCommonData] = useState<unknown[][]>([]);
 
-  // This function will be used to update HyperFormula when table cells change.
-  function afterChange(changes: CellChange[] | null, source: ChangeSource) {
+  function afterUnitChange(changes: CellChange[] | null, source: ChangeSource) {
     if (!hfInstance || source === 'loadData' || !changes) return;
 
-    changes.forEach(([row, col, oldValue, newValue]) => {
-      // Propagate the change to sheet 1 (your unit assets table)
+    changes.forEach(([row, col, , newValue]) => {
       hfInstance.setCellContents({ sheet: 1, row, col: col as number }, [[newValue]]);
+    });
+  }
+
+  function afterCommonChange(changes: CellChange[] | null, source: ChangeSource) {
+    if (!hfInstance || source === 'loadData' || !changes) return;
+
+    changes.forEach(([row, col, , newValue]) => {
       hfInstance.setCellContents({ sheet: 2, row, col: col as number }, [[newValue]]);
     });
   }
@@ -43,7 +48,6 @@ export default function Home() {
     const onValuesUpdated = (changes: ExportedChange[]) => {
       for (const change of changes) {
         if (change instanceof ExportedCellChange) {
-          // Check if the changed cell is the "Total" cell on sheet 0 (B2: row 1, col 1)
           if (change.address.sheet === 0 && change.address.col === 1 && change.address.row === 1) {
             const newTotal = hfInstance.getCellValue({ sheet: 0, col: 1, row: 1 });
             setTotal(newTotal as number);
@@ -198,12 +202,12 @@ export default function Home() {
                 <Label>Unit Assets</Label>
                 <div className="ht-theme-main-dark-auto">
                   <HotTable
-                    formulas={{ engine: hfInstance, sheetName: 'Sheet1' }}
+                    formulas={{ engine: hfInstance, sheetName: 'Unit' }}
                     data={unitData}
                     rowHeaders
                     height="auto"
                     licenseKey="non-commercial-and-evaluation"
-                    afterChange={afterChange}
+                    afterChange={afterUnitChange}
                   />
                 </div>
               </div>
@@ -214,12 +218,12 @@ export default function Home() {
                 <Label>Common Assets</Label>
                 <div className="ht-theme-main-dark-auto">
                   <HotTable
-                    formulas={{ engine: hfInstance, sheetName: 'Sheet2' }}
+                    formulas={{ engine: hfInstance, sheetName: 'Common' }}
                     data={commonData}
                     rowHeaders
                     height="auto"
                     licenseKey="non-commercial-and-evaluation"
-                    afterChange={afterChange}
+                    afterChange={afterCommonChange}
                   />
                 </div>
               </div>
