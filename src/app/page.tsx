@@ -3,15 +3,28 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HotTable } from '@handsontable/react-wrapper';
 import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { registerAllModules } from 'handsontable/registry';
+import { CellChange, ChangeSource } from "handsontable/common";
+
+import 'handsontable/styles/handsontable.min.css';
+import 'handsontable/styles/ht-theme-main.min.css';
+
+registerAllModules();
+
+const config = {
+  licenseKey: 'gpl-v3',
+}
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
+  const [hfInstance, setHFInstance] = useState<HyperFormula | null>(HyperFormula.buildEmpty(config));
   const [entitlement, setEntitlement] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+  const hotTableRef = useRef<any>(null);
 
   function handleCellChange(changes: ExportedChange[]) {
     console.log(changes);
@@ -133,9 +146,31 @@ export default function Home() {
     }
   }
 
+  function refreshTableData() {
+    if (hfInstance && hotTableRef.current) {
+      // Load the recalculated sheet data from HyperFo
+      const newData = hfInstance.getSheetSerialized(1);
+      hotTableRef.current.hotInstance.loadData(newData);
+    }
+  };
+
+  function afterChange(changes: CellChange[] | null, source: ChangeSource) {
+    if (!hfInstance || source === 'loadData' || !changes) return;
+
+    changes.forEach((change) => {
+      if (change instanceof ExportedCellChange && change.address.sheet === 1) {
+        hfInstance.setCellContents({ sheet: 1, row: change.address.row, col: change.address.col }, [[change.newValue as any]]);
+      }
+    });
+
+    refreshTableData();
+  };
 
   return (
     <div className="flex flex-col gap-3">
+      <div>
+        <h1 className="text-2xl font-bold">Fred v2 POC</h1>
+      </div>
       <div className="flex max-w-sm items-center gap-1.5">
         <Input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} />
         <Button disabled={!file} onClick={handleImport}>Import</Button>
@@ -154,10 +189,33 @@ export default function Home() {
                 <Label htmlFor="total">Total</Label>
                 <Input id="total" type="number" value={total} readOnly />
               </div>
+              <hr className="my-2" />
+              <div className="grid w-full items-center gap-1.5">
+                <Label>Unit Assets</Label>
+                <div className="ht-theme-main-dark-auto">
+                  <HotTable
+                    // ref={hotTableRef}
+                    formulas={{ engine: hfInstance,  }}
+                    data={[
+                      [10.26, null, 'Sum', '=SUM(A:A)'],
+                      [20.12, null, 'Average', '=AVERAGE(A:A)'],
+                      [30.01, null, 'Median', '=MEDIAN(A:A)'],
+                      [40.29, null, 'MAX', '=MAX(A:A)'],
+                      [50.18, null, 'MIN', '=MIN(A1:A5)'],
+                    ]}
+                    rowHeaders
+                    colHeaders
+                    height="auto"
+                    licenseKey="non-commercial-and-evaluation"
+                    // afterChange={afterChange}
+                  />
+                </div>
+              </div>
             </>
           )
           : null
       }
+
     </div>
   );
 }
