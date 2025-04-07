@@ -3,24 +3,42 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HyperFormula } from 'hyperformula';
+import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [hf, setHF] = useState<HyperFormula | null>(null);
+  const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
+  const [entitlement, setEntitlement] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
+
+  function handleCellChange(changes: ExportedChange[]) {
+    console.log(changes);
+
+    for (const change of changes) {
+      if (change instanceof ExportedCellChange) {
+        if (change.address.sheet === 0 && change.address.col === 1 && change.address.row === 1) {
+          setTotal(change.newValue as number);
+        }
+      }
+    }
+  }
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setFile(file);
-
   }
 
   async function handleImport() {
     if (!file) return;
+
+    if (hfInstance) {
+      hfInstance.destroy();
+      setHFInstance(null);
+    }
 
     const buffer = await file.arrayBuffer();
     const workbook = new Workbook();
@@ -50,28 +68,35 @@ export default function Home() {
       licenseKey: 'gpl-v3'
     });
 
-    setHF(hf);
+    hf.on('valuesUpdated', handleCellChange);
+
+    setHFInstance(hf);
     setFile(null);
 
-    const calculated = hf.getCellValue({ sheet: 2, col: 0, row: 0 });
-    console.log('A1 value:', calculated);
+    const entitlement = hf.getCellValue({ sheet: 0, col: 1, row: 0 }) as number;
+    setEntitlement(entitlement);
+
+    const total = hf.getCellValue({ sheet: 0, col: 1, row: 1 }) as number;
+    setTotal(total);
+
+    setFile(null);
   }
 
   async function handleExport() {
-    if (!hf) return;
+    if (!hfInstance) return;
 
     // Create a new Excel workbook using ExcelJS
     const workbook = new Workbook();
 
     // Get all sheet names from HyperFormula
-    const sheetNames = hf.getSheetNames();
+    const sheetNames = hfInstance.getSheetNames();
 
     // Loop through each sheet
     for (const sheetName of sheetNames) {
       // Get the sheet index for the given sheet name
-      const sheetId = hf.getSheetId(sheetName);
+      const sheetId = hfInstance.getSheetId(sheetName);
       // Retrieve the entire sheet data as a 2D array
-      const sheetData = hf.getSheetSerialized(sheetId!);
+      const sheetData = hfInstance.getSheetSerialized(sheetId!);
 
       const ws = workbook.addWorksheet(sheetName);
 
@@ -100,18 +125,39 @@ export default function Home() {
     a.click();
   }
 
+  function handleEntitlementChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const value = event.target.value;
+    setEntitlement(Number(value));
+    if (hfInstance) {
+      hfInstance.setCellContents({ sheet: 0, col: 1, row: 0 }, Number(value));
+    }
+  }
+
 
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <div className="flex max-w-sm items-center gap-1.5">
         <Input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} />
         <Button disabled={!file} onClick={handleImport}>Import</Button>
-        <Button disabled={!hf} onClick={handleExport}>Export</Button>
+        <Button disabled={!hfInstance} onClick={handleExport}>Export</Button>
       </div>
-      <div className="grid w-full max-w-sm items-center gap-1.5">
-        <Label htmlFor="entitlement">Common Entitlement</Label>
-        <Input id="entitlement" type="text" />
-      </div>
+
+      {
+        hfInstance
+          ? (
+            <>
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="entitlement">Common Entitlement</Label>
+                <Input id="entitlement" type="number" value={entitlement} onChange={handleEntitlementChange} step={0.1} />
+              </div>
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="total">Total</Label>
+                <Input id="total" type="number" value={total} readOnly />
+              </div>
+            </>
+          )
+          : null
+      }
     </div>
   );
 }
