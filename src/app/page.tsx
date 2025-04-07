@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HotColumn, HotTable } from '@handsontable/react-wrapper';
+import { HotTable } from '@handsontable/react-wrapper';
 import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
 import { useEffect, useState } from 'react';
