@@ -220,7 +220,7 @@ export default function Home() {
               <li><strong>Cross sheet dependencies:</strong> Updating the Common Entitlement should also update the totals for the common assets</li>
               <li><strong>Readonly fields:</strong> The Total field should reflect the sum of the unit asset totals plus the sum of the common asset totals</li>
               <li><strong>Formula support:</strong> Allowing the user to use formulas in the excel document</li>
-              <li><strong>Performance:</strong> Allowing the user to use a grid to edit the excel document</li>
+              <li><strong>Performance:</strong> The system should still be responsive with 1000 assets</li>
             </ul>
 
             <h2 className="text-lg font-bold mt-4">How to use the POC</h2>
