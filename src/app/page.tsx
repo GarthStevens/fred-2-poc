@@ -185,42 +185,50 @@ export default function Home() {
         hfInstance
           ? (
             <>
+              <hr className="my-2" />
+
               <div className="grid w-full max-w-sm gap-1.5">
                 <Label htmlFor="entitlement">Common Entitlement</Label>
                 <Input id="entitlement" type="number" value={entitlement} onChange={handleEntitlementChange} step={0.1} />
               </div>
+
+              <hr className="my-2" />
+
+              <div className="grid w-full items-center gap-1.5">
+                <Label>Unit Assets</Label>
+                <div className="ht-theme-main-dark-auto">
+                  <HotTable
+                    formulas={{ engine: hfInstance, sheetName: 'Sheet1' }}
+                    data={unitData}
+                    rowHeaders
+                    height="auto"
+                    licenseKey="non-commercial-and-evaluation"
+                    afterChange={afterChange}
+                  />
+                </div>
+              </div>
+
+              <hr className="my-2" />
+
+              <div className="grid w-full items-center gap-1.5">
+                <Label>Common Assets</Label>
+                <div className="ht-theme-main-dark-auto">
+                  <HotTable
+                    formulas={{ engine: hfInstance, sheetName: 'Sheet2' }}
+                    data={commonData}
+                    rowHeaders
+                    height="auto"
+                    licenseKey="non-commercial-and-evaluation"
+                    afterChange={afterChange}
+                  />
+                </div>
+              </div>
+
+              <hr className="my-2" />
+
               <div className="grid w-full max-w-sm items-center gap-1.5">
                 <Label htmlFor="total">Total</Label>
                 <Input id="total" type="number" value={total} readOnly />
-              </div>
-              <hr className="my-2" />
-              <div className="flex gap-2">
-                <div className="grid w-full items-center gap-1.5">
-                  <Label>Unit Assets</Label>
-                  <div className="ht-theme-main-dark-auto">
-                    <HotTable
-                      formulas={{ engine: hfInstance, sheetName: 'Sheet1' }}
-                      data={unitData}
-                      rowHeaders
-                      height="auto"
-                      licenseKey="non-commercial-and-evaluation"
-                      afterChange={afterChange}
-                    />
-                  </div>
-                </div>
-                <div className="grid w-full items-center gap-1.5">
-                  <Label>Common Assets</Label>
-                  <div className="ht-theme-main-dark-auto">
-                    <HotTable
-                      formulas={{ engine: hfInstance, sheetName: 'Sheet2' }}
-                      data={commonData}
-                      rowHeaders
-                      height="auto"
-                      licenseKey="non-commercial-and-evaluation"
-                      afterChange={afterChange}
-                    />
-                  </div>
-                </div>
               </div>
             </>
           )
