@@ -284,6 +284,7 @@ export default function Home() {
                           licenseKey="non-commercial-and-evaluation"
                           afterChange={afterUnitChange}
                           stretchH="all"
+                          hiddenRows={{ rows: [0] }}
                           columns={[
                             {type: 'text', title: 'Asset Name', numericFormat: { pattern: '$0,0.00' }},
                             {type: 'numeric', title: 'Rate', numericFormat: { pattern: '$0,0.00' }},
@@ -305,6 +306,7 @@ export default function Home() {
                           licenseKey="non-commercial-and-evaluation"
                           afterChange={afterCommonChange}
                           stretchH="all"
+                          hiddenRows={{ rows: [0] }}
                           columns={[
                             {type: 'text', title: 'Asset Name',},
                             {type: 'numeric', title: 'Rate', numericFormat: { pattern: '$0,0.00' }},
