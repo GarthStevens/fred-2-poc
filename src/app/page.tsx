@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { HotTable } from '@handsontable/react-wrapper';
 import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { registerAllModules } from 'handsontable/registry';
 import { CellChange, ChangeSource } from "handsontable/common";
 
@@ -21,22 +21,42 @@ const config = {
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [hfInstance, setHFInstance] = useState<HyperFormula | null>(HyperFormula.buildEmpty(config));
+  const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
   const [entitlement, setEntitlement] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
-  const hotTableRef = useRef<any>(null);
+  const [unitData, setUnitData] = useState<any[][]>([]);
+  const [commonData, setCommonData] = useState<any[][]>([]);
 
-  function handleCellChange(changes: ExportedChange[]) {
-    console.log(changes);
+  // This function will be used to update HyperFormula when table cells change.
+  function afterChange(changes: CellChange[] | null, source: ChangeSource) {
+    if (!hfInstance || source === 'loadData' || !changes) return;
 
-    for (const change of changes) {
-      if (change instanceof ExportedCellChange) {
-        if (change.address.sheet === 0 && change.address.col === 1 && change.address.row === 1) {
-          setTotal(change.newValue as number);
+    changes.forEach(([row, col, oldValue, newValue]) => {
+      // Propagate the change to sheet 1 (your unit assets table)
+      hfInstance.setCellContents({ sheet: 1, row, col: col as number }, [[newValue]]);
+      hfInstance.setCellContents({ sheet: 2, row, col: col as number }, [[newValue]]);
+    });
+  }
+
+  useEffect(() => {
+    if (!hfInstance) return;
+    const onValuesUpdated = (changes: ExportedChange[]) => {
+      for (const change of changes) {
+        if (change instanceof ExportedCellChange) {
+          // Check if the changed cell is the "Total" cell on sheet 0 (B2: row 1, col 1)
+          if (change.address.sheet === 0 && change.address.col === 1 && change.address.row === 1) {
+            const newTotal = hfInstance.getCellValue({ sheet: 0, col: 1, row: 1 });
+            setTotal(newTotal as number);
+          }
         }
       }
-    }
-  }
+    };
+
+    hfInstance.on('valuesUpdated', onValuesUpdated);
+    return () => {
+      hfInstance.off('valuesUpdated', onValuesUpdated);
+    };
+  }, [hfInstance]);
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -47,11 +67,6 @@ export default function Home() {
 
   async function handleImport() {
     if (!file) return;
-
-    if (hfInstance) {
-      hfInstance.destroy();
-      setHFInstance(null);
-    }
 
     const buffer = await file.arrayBuffer();
     const workbook = new Workbook();
@@ -77,13 +92,22 @@ export default function Home() {
       sheetsData[worksheet.name] = data;
     });
 
-    const hf = HyperFormula.buildFromSheets(sheetsData, {
-      licenseKey: 'gpl-v3'
+    const hf = HyperFormula.buildFromSheets(sheetsData, config);
+
+    hf.on('valuesUpdated', (changes) => {
+      for (const change of changes) {
+        if (change instanceof ExportedCellChange) {
+          if (change.address.sheet === 0 && change.address.col === 1 && change.address.row === 1) {
+            const newTotal = hf.getCellValue({ sheet: 0, col: 1, row: 1 });
+            setTotal(newTotal as number);
+          }
+        }
+      }
     });
 
-    hf.on('valuesUpdated', handleCellChange);
-
     setHFInstance(hf);
+    setUnitData(hf.getSheetSerialized(1));
+    setCommonData(hf.getSheetSerialized(2));
     setFile(null);
 
     const entitlement = hf.getCellValue({ sheet: 0, col: 1, row: 0 }) as number;
@@ -146,26 +170,6 @@ export default function Home() {
     }
   }
 
-  function refreshTableData() {
-    if (hfInstance && hotTableRef.current) {
-      // Load the recalculated sheet data from HyperFo
-      const newData = hfInstance.getSheetSerialized(1);
-      hotTableRef.current.hotInstance.loadData(newData);
-    }
-  };
-
-  function afterChange(changes: CellChange[] | null, source: ChangeSource) {
-    if (!hfInstance || source === 'loadData' || !changes) return;
-
-    changes.forEach((change) => {
-      if (change instanceof ExportedCellChange && change.address.sheet === 1) {
-        hfInstance.setCellContents({ sheet: 1, row: change.address.row, col: change.address.col }, [[change.newValue as any]]);
-      }
-    });
-
-    refreshTableData();
-  };
-
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -181,7 +185,7 @@ export default function Home() {
         hfInstance
           ? (
             <>
-              <div className="grid w-full max-w-sm items-center gap-1.5">
+              <div className="grid w-full max-w-sm gap-1.5">
                 <Label htmlFor="entitlement">Common Entitlement</Label>
                 <Input id="entitlement" type="number" value={entitlement} onChange={handleEntitlementChange} step={0.1} />
               </div>
@@ -190,32 +194,38 @@ export default function Home() {
                 <Input id="total" type="number" value={total} readOnly />
               </div>
               <hr className="my-2" />
-              <div className="grid w-full items-center gap-1.5">
-                <Label>Unit Assets</Label>
-                <div className="ht-theme-main-dark-auto">
-                  <HotTable
-                    // ref={hotTableRef}
-                    formulas={{ engine: hfInstance,  }}
-                    data={[
-                      [10.26, null, 'Sum', '=SUM(A:A)'],
-                      [20.12, null, 'Average', '=AVERAGE(A:A)'],
-                      [30.01, null, 'Median', '=MEDIAN(A:A)'],
-                      [40.29, null, 'MAX', '=MAX(A:A)'],
-                      [50.18, null, 'MIN', '=MIN(A1:A5)'],
-                    ]}
-                    rowHeaders
-                    colHeaders
-                    height="auto"
-                    licenseKey="non-commercial-and-evaluation"
-                    // afterChange={afterChange}
-                  />
+              <div className="flex gap-2">
+                <div className="grid w-full items-center gap-1.5">
+                  <Label>Unit Assets</Label>
+                  <div className="ht-theme-main-dark-auto">
+                    <HotTable
+                      formulas={{ engine: hfInstance, sheetName: 'Sheet1' }}
+                      data={unitData}
+                      rowHeaders
+                      height="auto"
+                      licenseKey="non-commercial-and-evaluation"
+                      afterChange={afterChange}
+                    />
+                  </div>
+                </div>
+                <div className="grid w-full items-center gap-1.5">
+                  <Label>Common Assets</Label>
+                  <div className="ht-theme-main-dark-auto">
+                    <HotTable
+                      formulas={{ engine: hfInstance, sheetName: 'Sheet2' }}
+                      data={commonData}
+                      rowHeaders
+                      height="auto"
+                      licenseKey="non-commercial-and-evaluation"
+                      afterChange={afterChange}
+                    />
+                  </div>
                 </div>
               </div>
             </>
           )
           : null
       }
-
     </div>
   );
 }
