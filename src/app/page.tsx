@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HotTable } from '@handsontable/react-wrapper';
+import { HotColumn, HotTable } from '@handsontable/react-wrapper';
 import { ExportedCellChange, ExportedChange, HyperFormula } from 'hyperformula';
 import { Workbook } from 'exceljs';
 import { useEffect, useState } from 'react';
@@ -212,7 +212,7 @@ export default function Home() {
       <div className="w-full max-w-6xl px-4 py-6">
         <div className="flex flex-col gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Fred v2 POC</h1>
+            <h1 className="text-2xl font-bold mb-4">Fred v2 POC</h1>
             <p>This POC should validate the following features:</p>
             <ul className="list-disc pl-6">
               <li><strong>Importing:</strong> Allowing the user to upload a master excel document</li>
@@ -284,7 +284,13 @@ export default function Home() {
                           licenseKey="non-commercial-and-evaluation"
                           afterChange={afterUnitChange}
                           stretchH="all"
-                        />
+                          columns={[
+                            {type: 'text', title: 'Asset Name', numericFormat: { pattern: '$0,0.00' }},
+                            {type: 'numeric', title: 'Rate', numericFormat: { pattern: '$0,0.00' }},
+                            {type: 'numeric', title: 'Quantity',numericFormat: { pattern: '$0,0.00' }},
+                            {type: 'numeric', title: 'Total',numericFormat: { pattern: '$0,0.00' }, readOnly: true}
+                          ]}
+                        />  
                       </div>
                     </div>
 
@@ -299,6 +305,12 @@ export default function Home() {
                           licenseKey="non-commercial-and-evaluation"
                           afterChange={afterCommonChange}
                           stretchH="all"
+                          columns={[
+                            {type: 'text', title: 'Asset Name',},
+                            {type: 'numeric', title: 'Rate', numericFormat: { pattern: '$0,0.00' }},
+                            {type: 'numeric', title: 'Quantity',numericFormat: { pattern: '$0,0.00' }},
+                            {type: 'numeric', title: 'Total',numericFormat: { pattern: '$0,0.00' }, readOnly: true}
+                          ]}
                         />
                       </div>
                     </div>
