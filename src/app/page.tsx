@@ -20,7 +20,6 @@ const config = {
 }
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
   const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
   const [entitlement, setEntitlement] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
@@ -66,12 +65,6 @@ export default function Home() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setFile(file);
-  }
-
-  async function handleImport() {
-    if (!file) return;
-
     const buffer = await file.arrayBuffer();
     const workbook = new Workbook();
     await workbook.xlsx.load(buffer);
@@ -112,15 +105,12 @@ export default function Home() {
     setHFInstance(hf);
     setUnitData(hf.getSheetSerialized(1));
     setCommonData(hf.getSheetSerialized(2));
-    setFile(null);
 
     const entitlement = hf.getCellValue({ sheet: 0, col: 1, row: 0 }) as number;
     setEntitlement(entitlement);
 
     const total = hf.getCellValue({ sheet: 0, col: 1, row: 1 }) as number;
     setTotal(total);
-
-    setFile(null);
   }
 
   async function handleExport() {
@@ -175,69 +165,105 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <h1 className="text-2xl font-bold">Fred v2 POC</h1>
-      </div>
-      <div className="flex max-w-sm items-center gap-1.5">
-        <Input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} />
-        <Button disabled={!file} onClick={handleImport}>Import</Button>
-        <Button disabled={!hfInstance} onClick={handleExport}>Export</Button>
-      </div>
+    <div className="flex justify-center w-full">
+      <div className="w-full max-w-6xl px-4 py-6">
+        <div className="flex flex-col gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Fred v2 POC</h1>
+            <p>This POC should validate the following features:</p>
+            <ul className="list-disc pl-6">
+              <li><strong>Importing:</strong> Allowing the user to upload a master excel document</li>
+              <li><strong>Exporting:</strong> Allowing the user to download an excel document that has all of the values populated</li>
+              <li><strong>Cross sheet dependencies:</strong> Updating the Common Entitlement should also update the totals for the common assets</li>
+              <li><strong>Readonly fields:</strong> The Total field should reflect the sum of the unit asset totals plus the sum of the common asset totals</li>
+              <li><strong>Formula support:</strong> Allowing the user to use formulas in the excel document</li>
+            </ul>
 
-      {
-        hfInstance
-          ? (
-            <>
+            <h2 className="text-lg font-bold mt-4">How to use the POC</h2>
+            <ol className="list-decimal pl-6">
+              <li>Upload a master excel document: Click the &quot;Choose File&quot; button and select the master excel document</li>
+              <li>Update the Common Entitlement</li>
+              <li>Update the unit assets</li>
+              <li>Update the common assets</li>
+              <li>Download the excel document</li>
+            </ol>
+
+            <h2 className="text-lg font-bold mt-4">Notes</h2>
+            <ul className="list-disc pl-6">
+              <li>The grids are completely editable. this will be locked down in the actual product</li>
+              <li>We will need a license to use this grid. There are other options</li>
+            </ul>
+          </div>
+
+          <hr className="my-2" />
+
+          <div className="flex max-w-sm items-center gap-1.5">
+            {!hfInstance && (<>
+              <Input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} />
               <hr className="my-2" />
-
-              <div className="grid w-full max-w-sm gap-1.5">
-                <Label htmlFor="entitlement">Common Entitlement</Label>
-                <Input id="entitlement" type="number" value={entitlement} onChange={handleEntitlementChange} step={0.1} />
-              </div>
-
-              <hr className="my-2" />
-
-              <div className="grid w-full items-center gap-1.5">
-                <Label>Unit Assets</Label>
-                <div className="ht-theme-main-dark-auto">
-                  <HotTable
-                    formulas={{ engine: hfInstance, sheetName: 'Unit' }}
-                    data={unitData}
-                    rowHeaders
-                    height="auto"
-                    licenseKey="non-commercial-and-evaluation"
-                    afterChange={afterUnitChange}
-                  />
-                </div>
-              </div>
-
-              <hr className="my-2" />
-
-              <div className="grid w-full items-center gap-1.5">
-                <Label>Common Assets</Label>
-                <div className="ht-theme-main-dark-auto">
-                  <HotTable
-                    formulas={{ engine: hfInstance, sheetName: 'Common' }}
-                    data={commonData}
-                    rowHeaders
-                    height="auto"
-                    licenseKey="non-commercial-and-evaluation"
-                    afterChange={afterCommonChange}
-                  />
-                </div>
-              </div>
-
-              <hr className="my-2" />
-
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="total">Total</Label>
-                <Input id="total" type="number" value={total} readOnly />
-              </div>
             </>
-          )
-          : null
-      }
-    </div>
+            )}
+          </div>
+
+          {
+            hfInstance
+              ? (
+                <>
+
+
+                  <div className="grid w-full max-w-sm gap-1.5">
+                    <Label htmlFor="entitlement">Common Entitlement</Label>
+                    <Input id="entitlement" type="number" value={entitlement} onChange={handleEntitlementChange} step={0.1} />
+                  </div>
+
+                  <hr className="my-2" />
+
+                  <div className="grid w-full items-center gap-1.5">
+                    <Label>Unit Assets</Label>
+                    <div className="ht-theme-main-dark-auto">
+                      <HotTable
+                        formulas={{ engine: hfInstance, sheetName: 'Unit' }}
+                        data={unitData}
+                        rowHeaders
+                        height="auto"
+                        licenseKey="non-commercial-and-evaluation"
+                        afterChange={afterUnitChange}
+                      />
+                    </div>
+                  </div>
+
+                  <hr className="my-2" />
+
+                  <div className="grid w-full items-center gap-1.5">
+                    <Label>Common Assets</Label>
+                    <div className="ht-theme-main-dark-auto">
+                      <HotTable
+                        formulas={{ engine: hfInstance, sheetName: 'Common' }}
+                        data={commonData}
+                        rowHeaders
+                        height="auto"
+                        licenseKey="non-commercial-and-evaluation"
+                        afterChange={afterCommonChange}
+                      />
+                    </div>
+                  </div>
+
+                  <hr className="my-2" />
+
+                  <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <Label htmlFor="total">Total</Label>
+                    <Input id="total" type="number" value={total} readOnly />
+                  </div>
+
+                  <hr className="my-2" />
+
+                  <Button onClick={handleExport} className="w-full max-w-sm">Export</Button>
+                </>
+              )
+              : null
+          }
+        </div>
+      </div>
+    </div >
   );
 }
