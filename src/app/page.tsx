@@ -20,6 +20,10 @@ const config = {
   licenseKey: 'gpl-v3',
 }
 
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export default function Home() {
   const [hfInstance, setHFInstance] = useState<HyperFormula | null>(null);
   const [entitlement, setEntitlement] = useState<number>(0);
@@ -27,6 +31,7 @@ export default function Home() {
   const [unitData, setUnitData] = useState<unknown[][]>([]);
   const [commonData, setCommonData] = useState<unknown[][]>([]);
   const [hasBulked, setHasBulked] = useState<boolean>(false);
+  const [bulking, setBulking] = useState<boolean>(false);
 
   function afterUnitChange(changes: CellChange[] | null, source: ChangeSource) {
     if (!hfInstance || source === 'loadData' || !changes) return;
@@ -166,10 +171,11 @@ export default function Home() {
     }
   }
 
-  function handleBulkPopulateClick() {
-    if (!hfInstance) return;
-    console.log('Bulk Populate Clicked');
+  async function handleBulkPopulateClick() {
+    if (!hfInstance || bulking) return;
+    setBulking(true);
 
+    await wait(100);
     hfInstance.removeRows(1, [1, 5])
     hfInstance.removeRows(2, [1, 5])
 
@@ -198,6 +204,7 @@ export default function Home() {
 
     hfInstance.setCellContents({ sheet: 0, col: 1, row: 1 }, '=SUM(Unit!D2:D10006) + SUM(Common!D2:D10006)');
     setHasBulked(true);
+    setBulking(false);
   }
 
   return (
@@ -250,7 +257,9 @@ export default function Home() {
                   {!hasBulked && (
                     <>
                       <div className="grid w-full max-w-sm gap-1.5">
-                        <Button onClick={handleBulkPopulateClick}>Bulk Populate</Button>
+                        <Button onClick={handleBulkPopulateClick} disabled={bulking}>
+                          {bulking ? 'Bulk Populating...' : 'Bulk Populate'}
+                        </Button>
                       </div>
                       <hr className="my-2" />
                     </>
